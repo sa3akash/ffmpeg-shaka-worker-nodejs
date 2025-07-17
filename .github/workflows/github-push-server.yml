@@ -2,15 +2,15 @@ name: Build, Test, Scan and Push
 
 on:
   push:
-    # branches:
-    #   - main
-    tags:
-      - "v*" # Trigger on version tags like v1.0.0
+    branches:
+      - main
+    # tags:
+    #   - "v*" # Trigger on version tags like v1.0.0
 
 env:
   WORKING_DIR: ./server # Define once for all jobs
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/testing-nodejs
+  IMAGE_NAME: ${{ github.repository }}/worker-ffmpeg-shaka-nodejs
 
 jobs:
   setup:

@@ -50,12 +50,7 @@ app.listen(5000, () => {
   console.log(`server running on http://localhost:5000`);
 });
 
-
-
-
 // =====================
-
-
 
 // ✅ VMAP with preroll and midroll
 app.get("/vmap.xml", (req, res) => {
