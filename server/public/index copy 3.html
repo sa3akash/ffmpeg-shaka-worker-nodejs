@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Shaka Player + Video.js UI + ClearKey DRM</title>
+  <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    video {
+      width: 800px;
+      height: 450px;
+    }
+    #qualitySelector {
+      margin-top: 10px;
+      padding: 5px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <video id="video" class="video-js vjs-default-skin" controls autoplay></video>
+
+  <br />
+  <label for="qualitySelector">Select Quality: </label>
+  <select id="qualitySelector">
+    <option selected disabled>Loading...</option>
+  </select>
+
+  <!-- ✅ Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.3.6/dist/shaka-player.compiled.js"></script>
+  <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+
+  <script>
+    async function initPlayer() {
+      const video = document.getElementById('video');
+      const selector = document.getElementById('qualitySelector');
+
+      // ✅ Load Shaka Player
+      const player = new shaka.Player(video);
+
+      // ✅ Add Video.js UI (purely for skin/style)
+      videojs(video);
+
+      // ✅ Listen for errors
+      player.addEventListener('error', e => {
+        console.error('Shaka Error:', e.detail);
+      });
+
+      // ✅ DRM ClearKey config
+      player.configure({
+        drm: {
+          clearKeys: {
+            // keyId (hex) : key (hex)
+            'd6ce2cb93cb36e6b3f3e762e5c007b31': 'ddae6b07bda1ec75f99a251608305895'
+          }
+        },
+        streaming: {
+          lowLatencyMode: true
+        }
+      });
+
+      // ✅ Load DASH Manifest
+      try {
+        await player.load('/output/en/manifest.mpd');
+        console.log('Video loaded!');
+        video.play();
+      } catch (e) {
+        console.error('Load failed:', e);
+      }
+
+      // ✅ Populate Quality Selector
+      function updateQualities() {
+        const tracks = player.getVariantTracks().filter(t => t.videoId !== null);
+        selector.innerHTML = '';
+
+        const autoOpt = document.createElement('option');
+        autoOpt.value = 'auto';
+        autoOpt.textContent = 'Auto (ABR)';
+        selector.appendChild(autoOpt);
+
+        tracks.forEach((track, i) => {
+          const opt = document.createElement('option');
+          opt.value = i;
+          opt.textContent = `${track.height}p - ${Math.round(track.bandwidth / 1000)} kbps`;
+          selector.appendChild(opt);
+        });
+
+        const activeTrack = tracks.find(t => t.active);
+        if (activeTrack) {
+          selector.value = tracks.indexOf(activeTrack);
+        } else {
+          selector.value = 'auto';
+        }
+      }
+
+      selector.addEventListener('change', () => {
+        const val = selector.value;
+        if (val === 'auto') {
+          player.configure({ abr: { enabled: true } });
+        } else {
+          const tracks = player.getVariantTracks().filter(t => t.videoId !== null);
+          const selected = tracks[parseInt(val)];
+          player.configure({ abr: { enabled: false } });
+          player.selectVariantTrack(selected, true);
+        }
+      });
+
+      player.addEventListener('trackschanged', updateQualities);
+      player.addEventListener('adaptation', updateQualities);
+
+      setTimeout(updateQualities, 1000); // Fallback
+    }
+
+    document.addEventListener('DOMContentLoaded', initPlayer);
+  </script>
+</body>
+</html>

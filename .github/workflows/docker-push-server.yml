@@ -1,0 +1,189 @@
+name: Build, Test, Scan and Push
+
+on:
+  push:
+    branches:
+      - main
+    # tags:
+    #   - "v*" # Trigger on version tags like v1.0.0
+
+env:
+  WORKING_DIR: ./server # Define once for all jobs
+  IMAGE_NAME_CLIENT: sa2avroo/worker-nodejs-ffmpeg-shaka
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🏷️ Get version from package.json
+        id: get_version
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Using version: ${VERSION}"
+
+  install:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🧰 Set up Node.js with caching
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: 🗂️ Cache node_modules
+        uses: actions/cache@v4
+        id: node-cache
+        with:
+          path: ${{ env.WORKING_DIR }}/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles(format('{0}/package-lock.json', env.WORKING_DIR)) }}
+
+      - name: 📦 Install Deps
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm install --legacy-peer-deps
+
+  build-code:
+    needs: [setup, install]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🗂️ Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WORKING_DIR }}/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles(format('{0}/package-lock.json', env.WORKING_DIR)) }}
+
+      - name: 🏗️ Build Nodejs app
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm run build
+
+  build-image:
+    needs: [setup, install, build-code]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🛠️ Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🗃️ Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: 🐳 Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.WORKING_DIR }}
+          push: false
+          tags: |
+            ${{ env.IMAGE_NAME_CLIENT }}:latest
+            ${{ env.IMAGE_NAME_CLIENT }}:${{ needs.setup.outputs.version }}
+            ${{ env.IMAGE_NAME_CLIENT }}:${{ github.sha }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          load: true
+
+      - name: 🔄 Update Docker cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: 📦 Save Docker Images
+        run: |
+          docker save ${{ env.IMAGE_NAME_CLIENT }}:latest -o image_latest.tar
+          docker save ${{ env.IMAGE_NAME_CLIENT }}:${{ needs.setup.outputs.version }} -o image_versioned.tar
+          docker save ${{ env.IMAGE_NAME_CLIENT }}:${{ github.sha }} -o image_sha.tar
+
+      - name: 📤 Upload Images
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            image_latest.tar
+            image_versioned.tar
+            image_sha.tar
+          retention-days: 1
+
+  scan:
+    needs: [setup, build-image]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Download Images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+
+      - name: 📦 Load Docker Images
+        run: |
+          docker load -i image_latest.tar
+          docker load -i image_versioned.tar
+          docker load -i image_sha.tar
+
+      - name: 🛡️ Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -cs) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: 🔍 Scan Docker images
+        run: |
+          trivy image --exit-code 1 --severity HIGH,CRITICAL --no-progress ${IMAGE_NAME_CLIENT}:latest
+          trivy image --exit-code 1 --severity HIGH,CRITICAL --no-progress ${IMAGE_NAME_CLIENT}:${{ needs.setup.outputs.version }}
+          trivy image --exit-code 1 --severity HIGH,CRITICAL --no-progress ${IMAGE_NAME_CLIENT}:${{ github.sha }}
+
+  push:
+    needs: [setup, build-image, scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔐 Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 📥 Download Images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+
+      - name: 📦 Load Docker Images
+        run: |
+          docker load -i image_latest.tar
+          docker load -i image_versioned.tar
+          docker load -i image_sha.tar
+
+      - name: 📤 Push Docker images
+        run: |
+          docker push ${IMAGE_NAME_CLIENT}:latest
+          docker push ${IMAGE_NAME_CLIENT}:${{ needs.setup.outputs.version }}
+          docker push ${IMAGE_NAME_CLIENT}:${{ github.sha }}
+
+# ==================================
+
+# git tag v1.2.3
+# git push origin v1.2.3 --tags
+
+# ==================================

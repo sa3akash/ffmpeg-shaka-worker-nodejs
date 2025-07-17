@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Video.js + Shaka Player ClearKey DRM</title>
+
+    <!-- Video.js CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/video.js@8.23.3/dist/video-js.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <video
+      id="video"
+      class="video-js vjs-default-skin"
+      width="800"
+      height="450"
+      controls
+      preload="auto"
+    ></video>
+
+    <!-- Video.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/video.js@8.23.3/dist/video.min.js"></script>
+    <!-- Shaka Player library -->
+    <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.15.7/dist/shaka-player.compiled.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        const videoElement = document.getElementById("video");
+
+        // Initialize Video.js player for UI
+        const player = videojs(videoElement);
+
+        // Initialize Shaka Player on the same video element
+        const shakaPlayer = new shaka.Player(videoElement);
+
+        // Listen for Shaka errors
+        shakaPlayer.addEventListener("error", (event) => {
+          console.error("Shaka Player Error", event.detail);
+        });
+
+        // Configure ClearKey DRM with base64 keys
+        shakaPlayer.configure({
+          drm: {
+            clearKeys: {
+              // Replace these with your actual base64 keys
+              "8f24393d268da69dfa3aa6a9c352fc26":
+                "959107d4f9376ffb97f063b669578a2f",
+            },
+          },
+          streaming: {
+            lowLatencyMode: true,
+          },
+        });
+
+        try {
+          // Load your DASH manifest here
+          // await shakaPlayer.load("/output/package/dash/manifest.mpd");
+          await shakaPlayer.load("/output/package/hls/master.m3u8");
+          console.log("Video loaded successfully");
+
+          // Play video
+          videoElement.play();
+        } catch (error) {
+          console.error("Error loading video with Shaka", error);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Shaka Player ClearKey Example</title>
+  </head>
+  <body>
+    <video id="video" width="800" height="450" controls autoplay></video>
+
+    <script src="https://cdn.jsdelivr.net/npm/shaka-player@4/dist/shaka-player.compiled.js"></script>
+    <script>
+      async function initPlayer() {
+        const video = document.getElementById("video");
+        const player = new shaka.Player(video);
+
+        // Listen for error events
+        player.addEventListener("error", (event) => {
+          console.error("Error code", event.detail.code, event.detail);
+        });
+
+        // Configure DRM ClearKey keys (base64)
+        player.configure({
+          drm: {
+            clearKeys: {
+              "8f24393d268da69dfa3aa6a9c352fc26":
+                "959107d4f9376ffb97f063b669578a2f",
+            },
+          },
+          streaming: {
+            lowLatencyMode: true,
+          },
+        });
+
+        try {
+          await player.load("/output/package/hls/master.m3u8");
+          console.log("The video has now been loaded!");
+          video.play();
+        } catch (error) {
+          console.error("Error loading video:", error);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", initPlayer);
+    </script>
+  </body>
+</html>

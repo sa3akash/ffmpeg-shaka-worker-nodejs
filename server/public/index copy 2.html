@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Shaka Player ClearKey + Quality Selector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #222;
+      color: #eee;
+    }
+    video {
+      width: 800px;
+      height: 450px;
+      background: black;
+    }
+    #qualitySelector {
+      margin-top: 10px;
+      font-size: 16px;
+      padding: 6px;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" controls autoplay></video>
+  <br />
+  <label for="qualitySelector">Select Quality: </label>
+  <select id="qualitySelector"></select>
+
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@4/dist/shaka-player.compiled.js"></script>
+  <script>
+    async function initPlayer() {
+      const video = document.getElementById('video');
+      const qualitySelector = document.getElementById('qualitySelector');
+
+      const player = new shaka.Player(video);
+
+      // Log errors
+      player.addEventListener('error', (event) => {
+        console.error('Error code', event.detail.code, event.detail);
+      });
+
+      // ClearKey DRM keys in base64 (replace with your keys!)
+      player.configure({
+        drm: {
+          clearKeys: {
+            // Replace these keys with your own
+            '8f24393d268da69dfa3aa6a9c352fc26': '959107d4f9376ffb97f063b669578a2f',
+          }
+        },
+        streaming: {
+          lowLatencyMode: true, // if your stream is low latency
+          abr: { enabled: true } // enable adaptive bitrate by default
+        }
+      });
+
+      // Populate quality dropdown
+      function updateQualityOptions() {
+        const tracks = player.getVariantTracks();
+        qualitySelector.innerHTML = '';
+
+        tracks.forEach((track, index) => {
+          const option = document.createElement('option');
+          option.value = index;
+          option.text = `${track.height}p @ ${Math.round(track.bandwidth / 1000)} kbps`;
+          qualitySelector.appendChild(option);
+        });
+
+        // Select active track
+        const activeTrack = tracks.find(t => t.active);
+        if (activeTrack) {
+          qualitySelector.value = tracks.indexOf(activeTrack);
+        }
+      }
+
+      // On user selection: disable ABR and select chosen quality
+      qualitySelector.addEventListener('change', () => {
+        const selectedIndex = parseInt(qualitySelector.value, 10);
+        const tracks = player.getVariantTracks();
+
+        player.configure({ abr: { enabled: false } });
+        player.selectVariantTrack(tracks[selectedIndex], /* clearBuffer= */ true);
+      });
+
+      // Update quality options when adaptation happens (network change, etc.)
+      player.addEventListener('adaptation', updateQualityOptions);
+
+      try {
+        // await player.load('/output/package/dash/manifest.mpd'); // Replace with your manifest URL
+        await player.load('/output/package/hls/master.m3u8'); // Replace with your manifest URL
+
+
+        console.log('The video has now been loaded!');
+        updateQualityOptions();
+        video.play();
+      } catch (error) {
+        console.error('Error loading video:', error);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initPlayer);
+  </script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Shaka Player ClearKey + Quality Selector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #222;
+      color: #eee;
+    }
+    video {
+      width: 800px;
+      height: 450px;
+      background: black;
+    }
+    #qualitySelector {
+      margin-top: 10px;
+      font-size: 16px;
+      padding: 6px;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" controls autoplay></video>
+  <br />
+  <label for="qualitySelector">Select Quality: </label>
+  <select id="qualitySelector"></select>
+
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@4/dist/shaka-player.compiled.js"></script>
+    <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.5.0/dist/shaka-player.ui.js"></script>
+
+  <script>
+    async function initPlayer() {
+      const video = document.getElementById('video');
+      const qualitySelector = document.getElementById('qualitySelector');
+
+  // ✅ UI overlay (important for IMA support)
+  const player = new shaka.Player(video);
+
+      // Log errors
+      player.addEventListener('error', (event) => {
+        console.error('Error code', event.detail.code, event.detail);
+      });
+
+      
+  const ui = new shaka.ui.Overlay(player, video.parentElement, video);
+  const controls = ui.getControls();
+ // ✅ Required for ad support (IMA)
+  const adManager = controls.getAdManager();
+  adManager.init();
+
+
+      // ClearKey DRM keys in base64 (replace with your keys!)
+      player.configure({
+        drm: {
+          clearKeys: {
+            // Replace these keys with your own
+            'd6ce2cb93cb36e6b3f3e762e5c007b31': 'ddae6b07bda1ec75f99a251608305895'
+          }
+        },
+        streaming: {
+          lowLatencyMode: true, // if your stream is low latency
+          abr: { enabled: true } // enable adaptive bitrate by default
+        },
+        ads: {
+          adTagUrl: 'http://localhost:5000/vmap.xml'
+        }
+      });
+
+      // Populate quality dropdown
+      function updateQualityOptions() {
+        const tracks = player.getVariantTracks();
+        qualitySelector.innerHTML = '';
+
+        tracks.forEach((track, index) => {
+          const option = document.createElement('option');
+          option.value = index;
+          option.text = `${track.height}p @ ${Math.round(track.bandwidth / 1000)} kbps`;
+          qualitySelector.appendChild(option);
+        });
+
+        // Select active track
+        const activeTrack = tracks.find(t => t.active);
+        if (activeTrack) {
+          qualitySelector.value = tracks.indexOf(activeTrack);
+        }
+      }
+
+      // On user selection: disable ABR and select chosen quality
+      qualitySelector.addEventListener('change', () => {
+        const selectedIndex = parseInt(qualitySelector.value, 10);
+        const tracks = player.getVariantTracks();
+
+        player.configure({ abr: { enabled: false } });
+        player.selectVariantTrack(tracks[selectedIndex], /* clearBuffer= */ true);
+      });
+
+      // Update quality options when adaptation happens (network change, etc.)
+      player.addEventListener('adaptation', updateQualityOptions);
+
+      try {
+        // await player.load('/output/package/dash/manifest.mpd'); // Replace with your manifest URL
+        await player.load('/output/un/manifest.mpd');
+
+
+        console.log('The video has now been loaded!');
+        updateQualityOptions();
+        video.play();
+      } catch (error) {
+        console.error('Error loading video:', error);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initPlayer);
+  </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Shaka Player + Ads Demo</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/shaka-player@4.5.0/dist/controls.css"
+    />
+
+    <style>
+      body {
+        background: #000;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #video-container {
+        position: relative;
+        width: 800px;
+        height: 450px;
+      }
+      video {
+        width: 100%;
+        height: 100%;
+        background: black;
+      }
+      #qualitySelector {
+        margin-top: 10px;
+        font-size: 16px;
+        padding: 6px;
+        width: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="video-container"
+      style="position: relative; width: 800px; height: 450px"
+    >
+      <video id="video" autoplay muted></video>
+      <div
+        id="ad-container"
+        style="position: absolute; width: 100%; height: 100%; z-index: 2"
+      ></div>
+    </div>
+
+    <label for="qualitySelector">Select Quality: </label>
+    <select id="qualitySelector"></select>
+
+    <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.5.0/dist/shaka-player.ui.js"></script>
+
+    <script>
+      async function initPlayer() {
+        const video = document.getElementById("video");
+        const qualitySelector = document.getElementById("qualitySelector");
+
+        // Create player and UI overlay with ads config here:
+        const player = new shaka.Player(video);
+
+        // Pass ads config here, NOT in player.configure()
+        const ui = new shaka.ui.Overlay(
+          player,
+          document.getElementById("video-container"),
+          video,
+          {
+            // ✅ Include adContainer and ads config here!
+            adContainer: document.getElementById("ad-container"),
+            // ✅ This is where ads.serverUrl goes
+            config: {
+              ads: {
+                serverUrl: "http://localhost:5000/vmap.xml",
+              },
+            },
+          }
+        );
+
+        ui.getControls();
+
+        player.configure({
+          drm: {
+            clearKeys: {
+              d6ce2cb93cb36e6b3f3e762e5c007b31:
+                "ddae6b07bda1ec75f99a251608305895",
+            },
+          },
+        });
+
+        function updateQualityOptions() {
+          const tracks = player.getVariantTracks();
+          qualitySelector.innerHTML = "";
+          tracks.forEach((track, i) => {
+            const option = document.createElement("option");
+            option.value = i;
+            option.text = `${track.height}p @ ${Math.round(
+              track.bandwidth / 1000
+            )} kbps`;
+            if (track.active) option.selected = true;
+            qualitySelector.appendChild(option);
+          });
+        }
+
+        qualitySelector.addEventListener("change", () => {
+          const tracks = player.getVariantTracks();
+          const selectedIndex = parseInt(qualitySelector.value, 10);
+          player.configure({ streaming: { abr: { enabled: false } } });
+          player.selectVariantTrack(tracks[selectedIndex], true);
+        });
+
+        player.addEventListener("adaptation", updateQualityOptions);
+
+        player.addEventListener("error", (e) => {
+          console.error("Player error:", e.detail);
+        });
+
+        player.addEventListener("adstarted", () => {
+          console.log("✅ Ad started!");
+        });
+        player.addEventListener("adcomplete", () => {
+          console.log("✅ Ad finished!");
+        });
+        player.addEventListener("adskipped", () => {
+          console.log("⏩ Ad skipped!");
+        });
+
+        try {
+          // await player.load("/output/un/manifest.mpd"); // your DASH manifest here
+          await player.load(
+            "https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd"
+          );
+
+          updateQualityOptions();
+          console.log("✅ Video and ads loaded");
+        } catch (e) {
+          console.error("❌ Error loading video:", e);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", initPlayer);
+    </script>
+  </body>
+</html>
