@@ -15,7 +15,7 @@ export const useShakaPlayer = () => {
     const player = new shaka.Player(videoElement);
 
     //Setting up shaka player UI
-    // const ui = new shaka.ui.Overlay(player, containerRef.current, videoElement);
+    const ui = new shaka.ui.Overlay(player, containerRef.current, videoElement);
     // ui.configure(uiConfig); //configure UI
     // ui.getControls();
 
@@ -24,15 +24,16 @@ export const useShakaPlayer = () => {
     player.configure({
       drm: {
         clearKeys: {
-          "16d1aa3cf43a5d27e6e25af020815f2e":
-            "45a4c9706fe20b78905c0e4ddae3c05e",
+          "7f013862bf2e85c920b9de743ab0a596":
+            "77e694b04d99d7b9727d9c6800c14379",
         },
       },
     });
 
     player
-    //   .load("http://localhost:5000/output/en/manifest.mpd")
-      .load("http://localhost:5000/output/en/master.m3u8")
+      .load("http://localhost:5000/output/song/video/lock/manifest.mpd")
+      // .load("http://localhost:5000/output/en/master.m3u8")
+      // .load("https://sa2uploads.t3.storage.dev/processed/full-video-raanjhan-do-patti-kriti-sanon-shaheer-sheikh-parampara-tandon-sachet-parampara/dash/manifest.mpd")
         // .load("https://sa2uploads.t3.storage.dev/processed/new-tesing-vidop/dash/manifest.mpd")
       .then(() => {
 const tracks = player.getVariantTracks();

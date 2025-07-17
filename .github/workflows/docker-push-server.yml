@@ -2,10 +2,10 @@ name: Build, Test, Scan and Push Docker Image
 
 on:
   push:
-    branches:
-      - main
-    # tags:
-    #   - "v*" # Trigger on version tags like v1.0.0
+    # branches:
+    #   - main
+    tags:
+      - "v*" # Trigger on version tags like v1.0.0
 
 env:
   WORKING_DIR: ./server # Define once for all jobs

@@ -13,7 +13,9 @@ node_modules
 
 # testing
 coverage
-
+dist
+server/public/output
+server/src/video
 # next.js
 .next/
 /out/
@@ -30,6 +32,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+server/dist
+client/.next
+client/node_modules
 
 # env files (can opt-in for committing if needed)
 .env*

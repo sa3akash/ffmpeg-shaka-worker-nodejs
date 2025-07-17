@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2016",
     "rootDir": "./src",
-    "declaration": true,
+    // "declaration": true,
     "module": "NodeNext",
     "moduleResolution": "nodenext",
     "sourceMap": true,

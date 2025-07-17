@@ -1,7 +1,7 @@
 import express from "express";
 import { globalErrorHandler } from "error-express";
 import path from "path";
-import { VideoTranscoder } from "./ffmpeg-encrip";
+import { TranscodeVideo } from "./transcoder";
 
 const app = express();
 
@@ -17,23 +17,12 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, "../public")));
 
 async function main() {
-  const inputVideo = path.join(__dirname, "input.mp4"); // Replace with your video
-  const outputDirMain = path.join(__dirname, "../public", "output", "main");
-  const outputDirEncripted = path.join(__dirname, "../public", "output", "en");
-  const outputNoEncripted = path.join(__dirname, "../public", "output", "un");
 
-  console.log("🎬 Transcoding...");
+  const outputDirMain = path.join(__dirname, "../public", "output", "song");
 
-  const transcoder = new VideoTranscoder(inputVideo, outputDirMain);
-  // await transcoder.transcode();
-  // await transcoder.packageHLS(outputNo);
-  // await transcoder.packageDASH(outputNo);
+  const video = new TranscodeVideo("video", outputDirMain);
 
-  // await transcoder.packageWithoutEncryption(outputNoEncripted);
-
-  // await transcoder.packageUniversalNoEncription(outputNoEncripted);
-  // const clearkey = await transcoder.generateClearKey(outputDirEncripted);
-  // await transcoder.packageUniversalWithClearKey(outputDirEncripted,clearkey);
+  await video.transcode();
 
   console.log("✅ All done. Check the output folder.");
 }

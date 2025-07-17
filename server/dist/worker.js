@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const error_express_1 = require("error-express");
 const path_1 = __importDefault(require("path"));
-const ffmpeg_encrip_1 = require("./ffmpeg-encrip");
+const transcoder_1 = require("./transcoder");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
@@ -28,12 +28,9 @@ app.use((req, res, next) => {
 app.use(express_1.default.static(path_1.default.join(__dirname, "../public")));
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        const inputVideo = path_1.default.join(__dirname, "input.mp4");
-        const outputDirMain = path_1.default.join(__dirname, "../public", "output", "main");
-        const outputDirEncripted = path_1.default.join(__dirname, "../public", "output", "en");
-        const outputNoEncripted = path_1.default.join(__dirname, "../public", "output", "un");
-        console.log("🎬 Transcoding...");
-        const transcoder = new ffmpeg_encrip_1.VideoTranscoder(inputVideo, outputDirMain);
+        const outputDirMain = path_1.default.join(__dirname, "../public", "output", "song");
+        const video = new transcoder_1.TranscodeVideo("video", outputDirMain);
+        yield video.transcode();
         console.log("✅ All done. Check the output folder.");
     });
 }
