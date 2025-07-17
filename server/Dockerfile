@@ -32,7 +32,7 @@ RUN cd /temp/dev && npm ci
 # install with --production (exclude devDependencies)
 RUN mkdir -p /temp/prod
 COPY package*.json /temp/prod/
-RUN cd /temp/prod && bun ci --only=production
+RUN cd /temp/prod && npm ci --only=production
 
 # copy node_modules from temp directory
 # then copy all (non-ignored) project files into the image
