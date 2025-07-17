@@ -4,7 +4,8 @@
 FROM node:22-alpine AS base
 
 # Set working directory
-WORKDIR /app
+WORKDIR /usr/src/app
+
 
 # Install common packages (FFmpeg, curl, etc.)
 RUN apk add --no-cache \
@@ -23,27 +24,34 @@ RUN curl -L -o /usr/local/bin/packager https://github.com/shaka-project/shaka-pa
 # ----------------------------
 # Stage 2 — Build
 # ----------------------------
-FROM base AS build
+FROM base AS install
+RUN mkdir -p /temp/dev
+COPY package*.json /temp/dev/
+RUN cd /temp/dev && npm ci
 
-# Copy and install dependencies
-COPY package*.json ./
-RUN npm ci --only=production
+# install with --production (exclude devDependencies)
+RUN mkdir -p /temp/prod
+COPY package*.json /temp/prod/
+RUN cd /temp/prod && bun ci --only=production
 
-# Copy source code
+# copy node_modules from temp directory
+# then copy all (non-ignored) project files into the image
+FROM base AS prerelease
+COPY --from=install /temp/dev/node_modules node_modules
 COPY . .
 
+# [optional] tests & build
+ENV NODE_ENV=production
+# RUN bun test
 RUN npm run build
 
-# ----------------------------
-# Stage 3 — Final Runtime
-# ----------------------------
-FROM base AS run
+# copy production dependencies and source code into final image
+FROM base AS release
+COPY --from=install /temp/prod/node_modules ./node_modules
+COPY --from=prerelease /usr/src/app/dist ./dist
+COPY --from=prerelease /usr/src/app/package.json .
 
-# Set working directory
-WORKDIR /app
-
-# Copy built code and node_modules from build stage
-COPY --from=build /app ./dist
-
-# Final CMD
-CMD ["node", "dist", "worker.js"]
+# run the app
+USER node
+EXPOSE 5000/tcp
+ENTRYPOINT [ "node", "dist", "worker.js" ]

@@ -1,4 +1,4 @@
-name: Build, Test, Scan and Push
+name: Build, Test, Scan and Push Docker Image
 
 on:
   push:
