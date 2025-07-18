@@ -71,8 +71,9 @@ export class ShakaPackager {
       const audioDir = path.join(outputDir, "audio", audio.lang);
       fs.mkdirSync(audioDir, { recursive: true });
 
-      const lang = /^[a-z]{2,3}$/i.test(audio.lang) ? audio.lang.toLowerCase() : "en";
-
+      const lang = /^[a-z]{2,3}$/i.test(audio.lang)
+        ? audio.lang.toLowerCase()
+        : "en";
 
       args.push(
         `input=${normalizePath(audio.path)},stream=audio,language=${lang},` +
@@ -128,6 +129,7 @@ export class ShakaPackager {
     args.push("--hls_playlist_type", "vod");
 
     console.log("📦 Packaging content...");
+
     await new Promise<void>((resolve, reject) => {
       const packagerProcess = spawn("packager", args, { stdio: "inherit" });
 

@@ -20,9 +20,9 @@ async function main() {
 
   const outputDirMain = path.join(__dirname, "../public", "output", "song");
 
-  const video = new TranscodeVideo("video", outputDirMain);
+  // const video = new TranscodeVideo("video", outputDirMain);
 
-  await video.transcode();
+  // await video.transcode();
 
   console.log("✅ All done. Check the output folder.");
 }

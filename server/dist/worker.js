@@ -15,7 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const error_express_1 = require("error-express");
 const path_1 = __importDefault(require("path"));
-const transcoder_1 = require("./transcoder");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
@@ -29,8 +28,6 @@ app.use(express_1.default.static(path_1.default.join(__dirname, "../public")));
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const outputDirMain = path_1.default.join(__dirname, "../public", "output", "song");
-        const video = new transcoder_1.TranscodeVideo("video", outputDirMain);
-        yield video.transcode();
         console.log("✅ All done. Check the output folder.");
     });
 }

@@ -45,5 +45,6 @@ export class TranscodeVideo {
     );
 
     await shaka.packageUniversal(this.outputDirEncripted, true);
+    await shaka.packageUniversal(this.outputNoEncripted, false);
   }
 }

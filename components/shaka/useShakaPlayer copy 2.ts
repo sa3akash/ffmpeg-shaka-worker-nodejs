@@ -49,9 +49,9 @@ export const formatTime = (time: number | null) => {
 export const useShakaPlayer = () => {
   const [error, setError] = useState<string | null>(null);
   const [qualities, setQualities] = useState<QualityOption[]>([]);
-  const [selectedQuality, setSelectedQuality] = useState<string>("auto");
   const [captions, setCaptions] = useState<CaptionOption[]>([]);
   const [audioTracks, setAudioTracks] = useState<AudioTrackOption[]>([]);
+  const [selectedQuality, setSelectedQuality] = useState<string>("auto");
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -541,7 +541,6 @@ export const useShakaPlayer = () => {
   // --- PLAYER CLEANUP ---
   useEffect(() => {
     return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       const interval = updateIntervalRef.current;
       if (interval) {
         clearInterval(interval);
@@ -587,6 +586,5 @@ export const useShakaPlayer = () => {
     selectQuality,
     toggleCaption,
     selectAudioTrack,
-    setVolume
   };
 };

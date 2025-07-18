@@ -1,10 +1,8 @@
-"use client";
+import VideoPlayer from "@/shaka";
 
-import dynamic from "next/dynamic";
-
-const ShakaPlayer = dynamic(() => import("@/shaka/ShakaPlayer"), {
-  ssr: false,
-});
+// const ShakaPlayer = dynamic(() => import("@/shaka/ShakaPlayer"), {
+//   ssr: false,
+// });
 
 export default function Home() {
   return (
@@ -16,7 +14,8 @@ export default function Home() {
 
       {/* <VideoJSPlayer /> */}
 
-      <ShakaPlayer />
+      {/* <ShakaPlayer /> */}
+      <VideoPlayer url="http://localhost:5000/output/song/video/free/manifest.mpd" />
     </div>
   );
 }

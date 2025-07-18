@@ -26,7 +26,8 @@ server/src/video
 # misc
 .DS_Store
 *.pem
-
+dist
+server/dist
 # debug
 npm-debug.log*
 yarn-debug.log*
