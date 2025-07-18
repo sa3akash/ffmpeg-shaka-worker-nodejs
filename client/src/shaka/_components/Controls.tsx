@@ -1,8 +1,8 @@
 import { FullscreenIcon, PauseIcon, VolumeOffIcon } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
 import Progress from "./Progress";
-import { formatTime } from "../hooks/useShakaPlayer";
 import { Icon } from "./icon";
+import { formatTime } from "../config";
 
 export const PlayerControls = () => {
   const {

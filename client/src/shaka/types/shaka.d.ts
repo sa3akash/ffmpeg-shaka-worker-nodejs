@@ -1,165 +1,144 @@
-export interface ShakaPlayerConfig {
-  // Streaming & Buffering
-  streaming: {
-    bufferingGoal: number;
-    rebufferingGoal: number;
-    bufferBehind: number;
-    ignoreTextStreamFailures: boolean;
-    jumpLargeGaps: boolean;
-    retryParameters: {
-      maxAttempts: number;
-      baseDelay: number;
-      backoffFactor: number;
-      fuzzFactor: number;
-      timeout: number;
-    };
-    lowLatencyMode: boolean;
-    forceTransmuxTS: boolean;
-    inaccurateManifestTolerance: number;
-    stallEnabled: boolean;
-    stallThreshold: number;
-    stallSkip: number;
-    smallGapLimit: number;
-  };
+// types/shaka.d.ts
 
-  // Manifest Configuration
-  manifest: {
-    dash: {
-      clockSyncUri: string;
-      ignoreDrmInfo: boolean;
-      ignoreMinBufferTime: boolean;
-      ignoreSuggestedPresentationDelay: boolean;
-      autoCorrectDrift: boolean;
-      initialSegmentLimit: number;
-      disableAudioGroups: boolean;
-      defaultPresentationDelay: number;
-      ignoreEmptyAdaptationSet: boolean;
-      xlinkFailGracefully: boolean;
-    };
-    hls: {
-      ignoreManifestProgramDateTime: boolean;
-      useSafariBehaviorForLive: boolean;
-      ignoreTextStreamFailures: boolean;
-      defaultAudioCodec: string;
-      enableAppleAdvancedAES: boolean;
-    };
-  };
+declare namespace ShakaType {
+  export class Player {
+    constructor(videoElement: HTMLMediaElement);
 
-  // ABR (Adaptive Bitrate) Configuration
-  abr: {
-    enabled: boolean;
-    defaultBandwidthEstimate: number;
-    bandwidthDowngradeTarget: number;
-    bandwidthUpgradeTarget: number;
-    switchInterval: number;
-    restrictions: {
-      minWidth: number;
-      maxWidth: number;
-      minHeight: number;
-      maxHeight: number;
-      minPixels: number;
-      maxPixels: number;
-      minBandwidth: number;
-      maxBandwidth: number;
-    };
-    manager: 'default' | 'static' | 'abr' | 'temporal' | 'bandwidth';
-    advanced: {
-      useNetworkInformation: boolean;
-      usePixelRatio: boolean;
-      useDevicePixelRatio: boolean;
-    };
-  };
+    load(uri: string, startTime?: number, mimeType?: string): Promise<void>;
+    unload(): Promise<void>;
+    destroy(): Promise<void>;
 
-  // DRM Configuration
-  drm: {
-    servers: { [keySystem: string]: string };
-    advanced: {
-      [keySystem: string]: {
-        audioRobustness?: string;
-        videoRobustness?: string;
-        persistentState?: 'required' | 'optional' | 'not-allowed';
-        distinctiveIdentifier?: 'required' | 'optional' | 'not-allowed';
-        delayLicenseRequestUntilPlayed: boolean;
+    isAudioOnly(): boolean;
+    isLive(): boolean;
+    isTextTrackVisible(): boolean;
+    getManifest(): Manifest | null;
+    getVariantTracks(): VariantTrack[];
+    getTextTracks(): TextTrack[];
+    getAudioLanguages(): string[];
+    getTextLanguages(): string[];
+    getStats(): PlayerStats;
+    getPlaybackRate(): number;
+    getConfiguration(): PlayerConfiguration;
+    configure(config: Partial<PlayerConfiguration>): void;
+
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject): void;
+    removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void;
+
+    selectVariantTrack(track: VariantTrack, clearBuffer: boolean): void;
+    selectTextTrack(track: TextTrack): void;
+
+    setTextTrackVisibility(visible: boolean): void;
+    setAudioLanguage(language: string): void;
+    setTextLanguage(language: string): void;
+    setPlaybackRate(rate: number): void;
+
+    // DRM
+    getDrmInfo(): DrmInfo | null;
+    isTextTrackVisible(): boolean;
+
+    // Offline support
+    static storage: typeof shaka.offline.Storage;
+  }
+
+  export interface PlayerConfiguration {
+    manifest?: {
+      dash?: {
+        ignoreMinBufferTime?: boolean;
       };
     };
-    clearKeys: { [keyId: string]: string };
-    retryParameters: {
-      maxAttempts: number;
-      baseDelay: number;
-      backoffFactor: number;
-      fuzzFactor: number;
-      timeout: number;
+    streaming?: {
+      bufferingGoal?: number;
+      rebufferingGoal?: number;
+      stallEnabled?: boolean;
+      alwaysStreamText?: boolean;
+      smallFragmentDelay?: number,
+      [key]: unknown
     };
-    logLicenseExchange: boolean;
-    updateExpirationTime: number;
-  };
+    abr?: {
+      enabled?: boolean;
+      defaultBandwidthEstimate?: number;
+    };
+    drm?: {
+      servers?: Record<string, string>;
+      clearKeys?: Record<string, string>;
+    };
+  }
 
-  // Playback Configuration
-  play: {
-    audioLanguage: string;
-    textLanguage: string;
-    textLanguageRole: string;
-    startTime: number;
-    preferredAudioChannelCount: number;
-    restrictions: {
-      minWidth: number;
-      maxWidth: number;
-      minHeight: number;
-      maxHeight: number;
-      minPixels: number;
-      maxPixels: number;
-      minBandwidth: number;
-      maxBandwidth: number;
-    };
-    offline: {
-      trackSelectionCallback: (tracks: Track[]) => Track[];
-    };
-  };
+  export interface VariantTrack {
+    id: number;
+    bandwidth: number;
+    language: string;
+    label: string;
+    kind: string;
+    active: boolean;
+    videoId: number;
+    audioId: number;
+    width: number;
+    height: number;
+    frameRate: number;
+    pixelAspectRatio: string;
+    hdr: boolean;
+  }
 
-  // UI Configuration
-  ui: {
-    controlPanelElements: string[];
-    overflowMenuButtons: string[];
-    addSeekBar: boolean;
-    seekBarColors: {
-      base: string;
-      buffered: string;
-      played: string;
-      hover: string;
-    };
-    doubleClickForFullscreen: boolean;
-  };
+  export interface TextTrack {
+    id: number;
+    language: string;
+    kind: string;
+    label: string;
+    mimeType: string;
+    codec: string;
+    active: boolean;
+  }
 
-  // Preload Configuration
-  preload: {
-    enabled: boolean;
-    lookahead: number;
-    segmentRelative: boolean;
-    bandwidthUpgradeTarget: number;
-    safeSeekOffset: number;
-  };
+  export interface PlayerStats {
+    width: number;
+    height: number;
+    streamBandwidth: number;
+    decodedFrames: number;
+    droppedFrames: number;
+    estimatedBandwidth: number;
+    playTime: number;
+    bufferingTime: number;
+    bufferingEvents: number;
+  }
 
-  // Offline Configuration
-  offline: {
-    usePersistentLicense: boolean;
-    trackSelectionCallback: (tracks: Track[]) => Track[];
-    progressCallback: (contentUri: string, progress: number) => void;
-  };
+  export interface Manifest {
+    presentationTimeline: {
+      getDuration(): number;
+    };
+    variants: VariantTrack[];
+    textStreams: TextTrack[];
+  }
 
-  // Advanced Features
-  features: {
-    mp4: {
-      forceTransmux: boolean;
-    };
-    hls: {
-      useFullSegmentsForStartTime: boolean;
-    };
-    mediaCapabilities: {
-      useMediaCapabilities: boolean;
-    };
-    lowLatency: {
-      enabled: boolean;
-      lookaheadLimit: number;
-    };
-  };
+  export interface DrmInfo {
+    keySystem: string;
+    licenseServerUri: string;
+    initData: Array<{
+      initDataType: string;
+      initData: ArrayBuffer;
+    }>;
+  }
+
+  // Offline API
+  export namespace offline {
+    export class Storage {
+      constructor(player?: Player);
+      configure(config: PlayerConfiguration): void;
+      store(uri: string): Promise<StoredContent>;
+      remove(contentUri: string): Promise<void>;
+      list(): Promise<StoredContent[]>;
+      static support(): boolean;
+    }
+
+    export interface StoredContent {
+      offlineUri: string;
+      originalManifestUri: string;
+      duration: number;
+      size: number;
+      tracks: VariantTrack[];
+      appMetadata?: Record<string, unknown>;
+    }
+  }
 }
+
+declare let shaka: shaka.IShaka;

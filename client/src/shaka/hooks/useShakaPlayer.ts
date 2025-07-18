@@ -1,7 +1,12 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ShakaPlayerConfig } from "../types/shaka";
+
+import {
+  ShakaStatic,
+  Player,
+  PlayerConfiguration,
+} from "../types/shaka-player";
 
 interface QualityOption {
   id: string;
@@ -30,132 +35,19 @@ interface Chapter {
   title: string;
 }
 
-type ShakaPlayerType = {
-  Player: any;
-  polyfill: {
-    installAll: () => void;
-  };
-};
-
-type BufferedRange = { start: number; end: number };
-
-export const formatTime = (time: number | null) => {
-  if (time === null || isNaN(time)) return "--:--";
-  const minutes = Math.floor(time / 60);
-  const seconds = Math.floor(time % 60);
-  return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-};
-
 export const useShakaPlayer = () => {
   const [error, setError] = useState<string | null>(null);
   const [qualities, setQualities] = useState<QualityOption[]>([]);
   const [selectedQuality, setSelectedQuality] = useState<string>("auto");
   const [captions, setCaptions] = useState<CaptionOption[]>([]);
   const [audioTracks, setAudioTracks] = useState<AudioTrackOption[]>([]);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
+
   const [loading, setLoading] = useState<boolean>(false);
-  const [bufferedRanges, setBufferedRanges] = useState<BufferedRange[]>([]);
-  const [playbackRate, setPlaybackRate] = useState<number>(1);
+
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
 
-  const [duration, setDuration] = useState<number>(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState<number>(1);
-  const [isFullScreen, setIsFullScreen] = useState(false);
-
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<Player>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const updateIntervalRef = useRef<NodeJS.Timeout>(undefined);
-
-  // --- PLAYER CONTROLS ---
-
-  const togglePlay = useCallback(async () => {
-    if (!videoRef.current) return;
-    try {
-      if (isPlaying) {
-        await videoRef.current.pause();
-      } else {
-        await videoRef.current.play();
-      }
-    } catch (err) {
-      console.error("Playback error:", err);
-      setError("Failed to play video");
-    }
-  }, [isPlaying]);
-
-  // Fullscreen change handler
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullScreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    };
-  }, []);
-
-  const seekTo = useCallback((time: number) => {
-    if (!videoRef.current || isNaN(time)) return;
-    videoRef.current.currentTime = time;
-  }, []);
-
-  const handleVolumeChange = useCallback((value: number[]) => {
-    if (!videoRef.current) return;
-    const newVolume = value[0];
-    videoRef.current.volume = newVolume;
-    videoRef.current.muted = newVolume === 0;
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
-  }, []);
-
-  const toggleFullscreen = useCallback(() => {
-    if (!containerRef.current) return;
-
-    if (!isFullScreen) {
-      containerRef.current.requestFullscreen?.();
-    } else {
-      document.exitFullscreen?.();
-    }
-  }, [isFullScreen]);
-
-  const seekToChapter = useCallback(
-    (startTime: number) => {
-      seekTo(startTime);
-    },
-    [seekTo]
-  );
-
-  const skipBackward = useCallback(
-    (seconds = 15) => {
-      if (!videoRef.current) return;
-      seekTo(Math.max(0, videoRef.current.currentTime - seconds));
-    },
-    [seekTo]
-  );
-
-  const skipForward = useCallback(
-    (seconds = 15) => {
-      if (!videoRef.current) return;
-      seekTo(Math.min(duration, videoRef.current.currentTime + seconds));
-    },
-    [duration, seekTo]
-  );
-
-  const toggleMute = useCallback(() => {
-    if (!videoRef.current) return;
-    videoRef.current.muted = !videoRef.current.muted;
-    setIsMuted(videoRef.current.muted);
-  }, []);
-
-  const changePlaybackRate = useCallback((rate: number) => {
-    if (!videoRef.current) return;
-    videoRef.current.playbackRate = rate;
-    setPlaybackRate(rate);
-  }, []);
 
   const selectQuality = useCallback((qualityId: string) => {
     if (!playerRef.current) return;
@@ -170,8 +62,8 @@ export const useShakaPlayer = () => {
       }
 
       const selectedTrack = tracks.find(
-        (track: any) =>
-          `${track.height}p` === qualityId || track.id === qualityId
+        (track) =>
+          `${track.height}p` === qualityId || `${track.id}` === `${qualityId}`
       );
 
       if (selectedTrack) {
@@ -190,7 +82,7 @@ export const useShakaPlayer = () => {
     try {
       const textTracks = playerRef.current.getTextTracks();
       const selectedTrack = textTracks.find(
-        (track: any) => track.language + "-" + track.kind === captionId
+        (track) => track.language + "-" + track.kind === captionId
       );
 
       if (selectedTrack) {
@@ -217,7 +109,7 @@ export const useShakaPlayer = () => {
     try {
       const audioTracks = playerRef.current.getVariantTracks();
       const selectedTrack = audioTracks.find(
-        (track: any) => track.language === audioTrackId
+        (track) => track.language === audioTrackId
       );
 
       if (selectedTrack) {
@@ -242,7 +134,7 @@ export const useShakaPlayer = () => {
     try {
       // Update subtitle tracks
       const textTracks = playerRef.current.getTextTracks();
-      const subtitles = textTracks.map((track: any) => ({
+      const subtitles = textTracks.map((track) => ({
         id: track.language + "-" + track.kind,
         language: track.language || "unknown",
         kind: track.kind,
@@ -253,24 +145,24 @@ export const useShakaPlayer = () => {
       // Update video quality tracks
       const variantTracks = playerRef.current.getVariantTracks();
       const videoQualities = variantTracks
-        .filter((track: any) => track.videoCodec)
-        .map((track: any) => ({
+        .filter((track) => track.videoCodec)
+        .map((track) => ({
           id: `${track.height}p`,
           height: track.height || 0,
           bandwidth: track.bandwidth || 0,
           active: track.active || false,
         }))
-        .sort((a: any, b: any) => b.height - a.height);
+        .sort((a, b) => b.height - a.height);
 
       setQualities(videoQualities);
 
       // Update audio tracks
       const audioTracks = variantTracks
         .filter(
-          (v: any, i: number, self: any[]) =>
+          (v, i: number, self) =>
             self.findIndex((t) => t.language === v.language) === i
         )
-        .map((track: any) => ({
+        .map((track) => ({
           id: track.language,
           language: track.language,
           kind: "main",
@@ -287,7 +179,7 @@ export const useShakaPlayer = () => {
     if (!playerRef.current) return;
     try {
       const tracks = playerRef.current.getVariantTracks();
-      const activeTrack = tracks.find((track: any) => track.active);
+      const activeTrack = tracks.find((track) => track.active);
 
       if (activeTrack) {
         setSelectedQuality(`${activeTrack.height}p`);
@@ -323,12 +215,12 @@ export const useShakaPlayer = () => {
 
   // --- PLAYER INITIALIZATION ---
   const initializePlayer = useCallback(
-    async (url: string, config: Partial<ShakaPlayerConfig> = {}) => {
+    async (url: string, config: PlayerConfiguration = {}) => {
       setError(null);
       setLoading(true);
 
       try {
-        const shaka: ShakaPlayerType =
+        const shaka: ShakaStatic =
           await require("shaka-player/dist/shaka-player.compiled.js");
 
         if (!videoRef.current) return;
@@ -353,16 +245,16 @@ export const useShakaPlayer = () => {
           updateCurrentQuality();
         });
 
-        player.addEventListener("buffering", (event: any) => {
+        player.addEventListener("buffering", (event) => {
           setLoading(event.buffering);
         });
 
-        player.addEventListener("error", (error: any) => {
+        player.addEventListener("error", (error) => {
           console.error("Shaka error", error);
           setError(`Error: ${error?.detail?.message || "Unknown"}`);
         });
 
-        player.addEventListener("manifestparsed", (event: any) => {
+        player.addEventListener("manifestparsed", (event) => {
           const chapters = extractChapters(event.data);
           setChapters(chapters);
         });
@@ -370,11 +262,17 @@ export const useShakaPlayer = () => {
         // Configure player
         player.configure({
           streaming: {
-            bufferingGoal: 30,
-            rebufferingGoal: 2,
-            bufferBehind: 30,
-            ignoreTextStreamFailures: true,
+            bufferingGoal: 40,
+            rebufferingGoal: 20,       
           },
+          manifest: {
+            retryParameters: {
+              timeout: 60000, // in ms
+              maxAttempts: 3,
+            },
+          },
+          preferredAudioLanguage: "en",
+          preferredTextLanguage: "en",
           abr: { enabled: true },
           ...config,
         });
@@ -385,12 +283,6 @@ export const useShakaPlayer = () => {
         // Initialize tracks and quality
         updateTracks();
         updateCurrentQuality();
-
-        // Set initial volume
-        if (videoRef.current) {
-          setVolume(videoRef.current.volume);
-          setIsMuted(videoRef.current.muted);
-        }
       } catch (error) {
         console.error("Player initialization error:", error);
         setError("Error initializing player");
@@ -400,152 +292,9 @@ export const useShakaPlayer = () => {
     [extractChapters, updateCurrentQuality, updateTracks]
   );
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (!videoRef.current) return;
-
-      switch (e.key) {
-        case " ":
-          e.preventDefault();
-          togglePlay();
-          break;
-        case "ArrowLeft":
-          e.preventDefault();
-          seekTo(Math.max(0, videoRef.current.currentTime - 5));
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          seekTo(Math.min(duration, videoRef.current.currentTime + 5));
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          handleVolumeChange([Math.min(1, volume + 0.1)]);
-          break;
-        case "ArrowDown":
-          e.preventDefault();
-          handleVolumeChange([Math.max(0, volume - 0.1)]);
-          break;
-        case "m":
-          e.preventDefault();
-          toggleMute();
-          break;
-        case "f":
-          e.preventDefault();
-          toggleFullscreen();
-          break;
-      }
-    },
-    [
-      togglePlay,
-      seekTo,
-      duration,
-      handleVolumeChange,
-      volume,
-      toggleMute,
-      toggleFullscreen,
-    ]
-  );
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleDurationChange = () => {
-      console.log("handleDurationChange");
-    };
-
-    const handlePlay = () => {
-      setIsPlaying(true);
-      // startTimeUpdateInterval();
-    };
-
-    const handlePause = () => setIsPlaying(false);
-
-    const handleVolumeChange = () => {
-      if (!isNaN(video.volume)) {
-        setVolume(video.volume);
-        setIsMuted(video.muted);
-      }
-    };
-
-    const handleWaiting = () => setLoading(true);
-    const handleCanPlay = () => setLoading(false);
-    const handleError = (e: any) => {
-      console.error("Video element error:", e);
-      setError("Video playback error");
-    };
-
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(duration);
-    };
-
-    const handleMetadata = () => {
-      setDuration(video.duration)
-    };
-    const handleProgress = () => {
-      const ranges: BufferedRange[] = [];
-      for (let i = 0; i < video.buffered.length; i++) {
-        ranges.push({
-          start: video.buffered.start(i),
-          end: video.buffered.end(i),
-        });
-      }
-      setBufferedRanges(ranges);
-    };
-
-    const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
-      console.log("handleTimeUpdate");
-    };
-
-    video.addEventListener("durationchange", handleDurationChange);
-    video.addEventListener("progress", handleProgress);
-
-    video.addEventListener("loadeddata", (e) => {
-      console.log("loadeddata", e);
-    });
-    video.addEventListener("canplay", handleCanPlay);
-    video.addEventListener("ratechange", (e) => {
-      console.log("ratechange", e);
-    });
-
-    video.addEventListener("timeupdate", handleTimeUpdate);
-
-    video.addEventListener("play", handlePlay);
-    video.addEventListener("pause", handlePause);
-    video.addEventListener("volumechange", handleVolumeChange);
-    video.addEventListener("waiting", handleWaiting);
-    video.addEventListener("error", handleError);
-    video.addEventListener("ended", handleEnded);
-    document.addEventListener("keydown", handleKeyDown);
-
-    video.addEventListener("loadedmetadata", handleMetadata);
-
-    return () => {
-      video.removeEventListener("loadedmetadata", handleMetadata);
-      video.removeEventListener("durationchange", handleDurationChange);
-      video.removeEventListener("play", handlePlay);
-      video.removeEventListener("pause", handlePause);
-      video.removeEventListener("volumechange", handleVolumeChange);
-      video.removeEventListener("waiting", handleWaiting);
-      video.removeEventListener("canplay", handleCanPlay);
-      video.removeEventListener("error", handleError);
-      video.removeEventListener("ended", handleEnded);
-      document.removeEventListener("keydown", handleKeyDown);
-      video.removeEventListener("progress", handleProgress);
-      video.removeEventListener("timeupdate", handleTimeUpdate);
-    };
-  }, [duration, handleKeyDown]);
-
   // --- PLAYER CLEANUP ---
   useEffect(() => {
     return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      const interval = updateIntervalRef.current;
-      if (interval) {
-        clearInterval(interval);
-      }
       playerRef.current?.destroy?.();
     };
   }, []);
@@ -553,40 +302,25 @@ export const useShakaPlayer = () => {
   return {
     // Player state
     error,
-    isPlaying,
-    isMuted,
     loading,
-    isFullScreen,
-    currentTime,
-    duration,
-    volume,
-    playbackRate,
-    bufferedRanges,
+
     qualities,
     selectedQuality,
     captions,
     audioTracks,
     chapters,
-    currentChapter,
 
     // Player refs
     videoRef,
-    containerRef,
+    playerRef,
 
     // Player controls
     initializePlayer,
-    togglePlay,
-    seekTo,
-    handleVolumeChange,
-    toggleMute,
-    toggleFullscreen,
-    skipBackward,
-    skipForward,
-    seekToChapter,
-    changePlaybackRate,
+
     selectQuality,
     toggleCaption,
     selectAudioTrack,
-    setVolume
+    setError,
+    setLoading,
   };
 };

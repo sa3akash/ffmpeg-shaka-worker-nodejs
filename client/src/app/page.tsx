@@ -15,7 +15,14 @@ export default function Home() {
       {/* <VideoJSPlayer /> */}
 
       {/* <ShakaPlayer /> */}
-      <VideoPlayer url="http://localhost:5000/output/song/video/free/manifest.mpd" />
+      <VideoPlayer
+        url="http://localhost:5000/output/song/video/free/manifest.mpd"
+        configuration={{
+          drm: {
+       
+          },
+        }}
+      />
     </div>
   );
 }

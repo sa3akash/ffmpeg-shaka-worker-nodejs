@@ -1,11 +1,8 @@
 import React, { createContext, useContext, ReactNode } from "react";
-import { useShakaPlayer } from "../hooks/useShakaPlayer";
+import { usePlayerControlls } from "../hooks/usePlayerControlls";
 
-type PlayerContextType = ReturnType<typeof useShakaPlayer>;
-
+type PlayerContextType = ReturnType<typeof usePlayerControlls>;
 const PlayerContext = createContext<PlayerContextType | null>(null);
-
-
 
 type VideoPlayerContextProps = {
   children: ReactNode;
@@ -14,7 +11,7 @@ type VideoPlayerContextProps = {
 export const PlayerProvider: React.FC<VideoPlayerContextProps> = ({
   children,
 }) => {
-  const value = useShakaPlayer();
+  const value = usePlayerControlls();
 
   return (
     <PlayerContext.Provider value={value}>

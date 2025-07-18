@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
-import { formatTime } from "../hooks/useShakaPlayer";
 import { usePlayer } from "../context/PlayerContext";
+import { formatTime } from "../config";
 
 const Progress = () => {
   const progressRef = useRef<HTMLDivElement>(null);
